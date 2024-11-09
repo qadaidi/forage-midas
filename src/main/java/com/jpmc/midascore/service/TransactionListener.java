@@ -1,20 +1,38 @@
 package com.jpmc.midascore.service;
 
+import com.jpmc.midascore.entity.TransactionRecord;
+import com.jpmc.midascore.entity.UserRecord;
 import com.jpmc.midascore.foundation.Transaction;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.jpmc.midascore.repository.TransactionRecordRepository;
+import com.jpmc.midascore.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
+import java.time.LocalDateTime;
 
 @Service
 public class TransactionListener {
 
-    static final Logger logger = LoggerFactory.getLogger(TransactionListener.class);
+    @Autowired
+    private UserRepository userRepository;
 
-    @KafkaListener(topics = "${general.kafka-topic}", groupId = "midas-core-group")
+    @Autowired
+    private TransactionRecordRepository transactionRecordRepository;
+
+    @KafkaListener(topics = "${general.kafka-topic}", groupId = "${spring.kafka.consumer.group-id}")
     public void listen(Transaction transaction) {
+        UserRecord sender = userRepository.findById(transaction.getSenderId());
+        UserRecord recipient = userRepository.findById(transaction.getRecipientId());
 
-        System.out.println("Received transaction: " + transaction.getAmount());
-        logger.info("Received transaction: " + transaction.getAmount());
+        if (sender != null && recipient != null && sender.getBalance() >= transaction.getAmount()) {
+            sender.setBalance(sender.getBalance() - transaction.getAmount());
+            recipient.setBalance(recipient.getBalance() + transaction.getAmount());
+
+            TransactionRecord transactionRecord = new TransactionRecord(sender, recipient, transaction.getAmount(), LocalDateTime.now());
+            transactionRecordRepository.save(transactionRecord);
+
+            userRepository.save(sender);
+            userRepository.save(recipient);
+        }
     }
 }

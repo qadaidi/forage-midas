@@ -1,5 +1,6 @@
 package com.jpmc.midascore;
 
+import com.jpmc.midascore.component.DatabaseConduit;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +14,9 @@ import org.springframework.test.annotation.DirtiesContext;
 @EmbeddedKafka(partitions = 1, brokerProperties = {"listeners=PLAINTEXT://localhost:9092", "port=9092"})
 public class TaskThreeTests {
     static final Logger logger = LoggerFactory.getLogger(TaskThreeTests.class);
+
+    @Autowired
+    private DatabaseConduit databaseConduit;
 
     @Autowired
     private KafkaProducer kafkaProducer;
