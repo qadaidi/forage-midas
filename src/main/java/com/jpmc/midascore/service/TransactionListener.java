@@ -19,6 +19,9 @@ public class TransactionListener {
     @Autowired
     private TransactionRecordRepository transactionRecordRepository;
 
+    @Autowired
+    private IncentiveService incentiveService;
+
     @KafkaListener(topics = "${general.kafka-topic}", groupId = "${spring.kafka.consumer.group-id}")
     public void listen(Transaction transaction) {
         UserRecord sender = userRepository.findById(transaction.getSenderId());
@@ -26,7 +29,10 @@ public class TransactionListener {
 
         if (sender != null && recipient != null && sender.getBalance() >= transaction.getAmount()) {
             sender.setBalance(sender.getBalance() - transaction.getAmount());
-            recipient.setBalance(recipient.getBalance() + transaction.getAmount());
+
+            float incentiveAmount = incentiveService.getIncentive(transaction).getAmount();
+
+            recipient.setBalance(recipient.getBalance() + transaction.getAmount() + incentiveAmount);
 
             TransactionRecord transactionRecord = new TransactionRecord(sender, recipient, transaction.getAmount(), LocalDateTime.now());
             transactionRecordRepository.save(transactionRecord);
